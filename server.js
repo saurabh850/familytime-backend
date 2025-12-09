@@ -157,6 +157,24 @@ app.post('/auth/join', async (req, res) => {
     }
 });
 
+// 2.2 LEAVE FAMILY (Parent Logout)
+app.post('/auth/leave', async (req, res) => {
+    try {
+        const { code, name } = req.body;
+        const user = await User.findOne({ family_code: code });
+        if (!user) return res.status(404).json({ error: "Invalid Access Code" });
+
+        // Remove from viewers list
+        if (name && user.viewers) {
+            user.viewers = user.viewers.filter(v => v.name !== name);
+            await user.save();
+        }
+        res.json({ message: "Left family" });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 2.2 GET VIEWERS (For Settings)
 app.get('/viewers', authenticate, async (req, res) => {
     try {
