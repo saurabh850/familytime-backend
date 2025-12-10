@@ -41,7 +41,8 @@ const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password_hash: { type: String, required: true },
     family_code: { type: String, required: true, unique: true },
-    viewers: [{ name: String, joinedAt: { type: Date, default: Date.now } }]
+    viewers: [{ name: String, joinedAt: { type: Date, default: Date.now } }],
+    theme_color: { type: String, default: "0xFFD27D2D" } // Default Terracotta
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -130,7 +131,7 @@ app.post('/auth/login', async (req, res) => {
         // Generate Token
         const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '7d' });
 
-        res.json({ token, family_code: user.family_code });
+        res.json({ token, family_code: user.family_code, theme_color: user.theme_color });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -175,15 +176,23 @@ app.post('/auth/leave', async (req, res) => {
     }
 });
 
-// 2.2 GET VIEWERS (For Settings)
-app.get('/viewers', authenticate, async (req, res) => {
+// 2.3 UPDATE THEME (Student)
+app.put('/preferences', authenticate, async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
-        if (!user) return res.status(404).json({ error: "User not found" });
-        res.json(user.viewers || []);
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+        const { theme_color } = req.body;
+        await User.findByIdAndUpdate(req.userId, { theme_color });
+        res.json({ message: "Theme updated" });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 2.4 GET THEME (Public/Parent via Code)
+app.get('/public/theme', async (req, res) => {
+    try {
+        const { code } = req.query;
+        const user = await User.findOne({ family_code: code });
+        if (!user) return res.status(404).json({ error: "Invalid Access Code" });
+        res.json({ theme_color: user.theme_color || "0xFFD27D2D" });
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 3. EXAM SCHEMA
